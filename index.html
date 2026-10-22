@@ -192,7 +192,7 @@ function isLoggedIn(){ try { return localStorage.getItem(K_SESSION) === 'active'
 function showView(){
   const ok = isLoggedIn();
   $('loginView').classList.toggle('hidden', ok);
-  $('loginView').classList.toggle('flex', !ok);$('appView').classList.toggle('hidden', ok);
+  $('loginView').classList.toggle('flex', !ok);$('appView').classList.toggle('hidden', !ok); // Fixed bug here!
   if (ok) switchTab('checkin');
 }
 $('loginForm').addEventListener('submit', e => {
