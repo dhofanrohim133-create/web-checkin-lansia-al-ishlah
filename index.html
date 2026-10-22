@@ -121,7 +121,7 @@
     <section id="tab-pengaturan" class="panel hidden bg-white rounded-2xl shadow-sm p-5 sm:p-7 space-y-6">
       <div>
         <h2 class="text-xl font-extrabold">Pengaturan</h2>
-        <p class="text-stone-500">Data tersimpan di browser perangkat ini (localStorage), tidak dikirim ke server.</p>
+        <p class="text-stone-500">Data tersimpan di Firebase Realtime Database (Tersinkronisasi antar perangkat secara real-time).</p>
       </div>
       <div class="flex flex-wrap gap-3">
         <button id="seedBtn" class="bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold rounded-xl px-5 py-3">Isi data contoh</button>
@@ -133,9 +133,28 @@
 
 <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-green-900 text-white font-bold rounded-full px-6 py-3 shadow-lg hidden z-50" role="status"></div>
 
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+
 <script>
+// Konfigurasi Firebase Realtime Database
+const firebaseConfig = {
+  apiKey: "AIzaSyA7H5s0qsgq12PwWmFVwn94gZYBsSWDK9c",
+  authDomain: "lansia-alishlah.firebaseapp.com",
+  databaseURL: "https://lansia-alishlah-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "lansia-alishlah",
+  storageBucket: "lansia-alishlah.firebasestorage.app",
+  messagingSenderId: "486449112701",
+  appId: "1:486449112701:web:b870ed2523c80541d5b314",
+  measurementId: "G-5CNJ73XNLX"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
 const CRED = { u: 'pengurus', p: 'alishlah2026' };
-const K_SESSION = 'alishlah_session', K_DATA = 'alishlah_checkins';
+const K_SESSION = 'alishlah_session';
 const EMOS = {
   'Senang':          { bg:'#d9f2dc', fg:'#1e5a2a', chart:'#86d19a', icon:'😊' },
   'Tenang':          { bg:'#d8e8f8', fg:'#1f4a78', chart:'#8bb8e8', icon:'😌' },
@@ -147,10 +166,19 @@ const EMOS = {
 const ATTN = ['Kesepian','Rindu keluarga'];
 const $ = id => document.getElementById(id);
 let selected = null, chart = null;
+let checkinsData = [];
 
-/* ---------- storage ---------- */
-const load = () => { try { return JSON.parse(localStorage.getItem(K_DATA)) || []; } catch { return []; } };
-const save = d => { try { localStorage.setItem(K_DATA, JSON.stringify(d)); } catch {} };
+/* ---------- real-time sync database ---------- */
+db.ref('checkins').on('value', snapshot => {
+  const val = snapshot.val();
+  checkinsData = val ? Object.values(val) : [];
+  
+  const activeTab = document.querySelector('.tab[aria-selected="true"]')?.dataset.tab;
+  if (activeTab === 'ringkasan') renderSummary();
+  if (activeTab === 'riwayat') renderHistory();
+});
+
+const load = () => checkinsData;
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt = iso => new Date(iso).toLocaleString('id-ID', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
 
@@ -164,15 +192,14 @@ function isLoggedIn(){ try { return localStorage.getItem(K_SESSION) === 'active'
 function showView(){
   const ok = isLoggedIn();
   $('loginView').classList.toggle('hidden', ok);
-  $('loginView').classList.toggle('flex', !ok);
-  $('appView').classList.toggle('hidden', !ok);
+  $('loginView').classList.toggle('flex', !ok);$('appView').classList.toggle('hidden', ok);
   if (ok) switchTab('checkin');
 }
 $('loginForm').addEventListener('submit', e => {
   e.preventDefault();
-  if ($('user').value.trim() === CRED.u && $('pass').value === CRED.p){
+  if ($('user').value.trim() === CRED.u &&$('pass').value === CRED.p){
     try { localStorage.setItem(K_SESSION, 'active'); } catch {}
-    $('loginErr').classList.add('hidden'); $('pass').value = ''; showView();
+    $('loginErr').classList.add('hidden');$('pass').value = ''; showView();
   } else $('loginErr').classList.remove('hidden');
 });
 $('logoutBtn').addEventListener('click', () => {
@@ -194,24 +221,32 @@ $('emoGrid').innerHTML = Object.entries(EMOS).map(([n, c]) => `
   <button type="button" class="emo rounded-2xl p-4 text-center font-extrabold text-lg" aria-pressed="false" data-emo="${n}" style="background:${c.bg};color:${c.fg}">
     <span class="block text-4xl mb-1" aria-hidden="true">${c.icon}</span>${n}
   </button>`).join('');
-$('emoGrid').addEventListener('click', e => {
-  const b = e.target.closest('.emo'); if (!b) return;
-  selected = b.dataset.emo;
-  document.querySelectorAll('.emo').forEach(x => x.setAttribute('aria-pressed', x === b));
-});
-$('saveBtn').addEventListener('click', () => {
-  const err = $('formErr'), nama = $('nama').value;
+$('emoGrid').addEventListener('click', e => { const b = e.target.closest('.emo'); if (!b) return; selected = b.dataset.emo; document.querySelectorAll('.emo').forEach(x => x.setAttribute('aria-pressed', x === b)); });$('saveBtn').addEventListener('click', () => {
+  const err = $('formErr'), nama =$('nama').value;
   if (!nama || !selected){
     err.textContent = !nama ? 'Pilih nama lansia terlebih dahulu.' : 'Pilih salah satu perasaan terlebih dahulu.';
     err.classList.remove('hidden'); return;
   }
   err.classList.add('hidden');
-  const d = load();
-  d.push({ id: Date.now(), tanggal: new Date().toISOString(), nama, emosi: selected, catatan: $('catatan').value.trim() });
-  save(d);
-  toast('Check-in ' + nama + ' tersimpan');
-  selected = null; $('catatan').value = ''; $('nama').value = '';
-  document.querySelectorAll('.emo').forEach(x => x.setAttribute('aria-pressed', 'false'));
+  
+  const newItem = {
+    id: Date.now(),
+    tanggal: new Date().toISOString(),
+    nama,
+    emosi: selected,
+    catatan: $('catatan').value.trim()
+  };
+
+  db.ref('checkins').push(newItem)
+    .then(() => {
+      toast('Check-in ' + nama + ' tersimpan ke server');
+      selected = null; $('catatan').value = '';$('nama').value = '';
+      document.querySelectorAll('.emo').forEach(x => x.setAttribute('aria-pressed', 'false'));
+    })
+    .catch(e => {
+      err.textContent = 'Gagal menyimpan ke database: ' + e.message;
+      err.classList.remove('hidden');
+    });
 });
 
 /* ---------- ringkasan ---------- */
@@ -219,10 +254,9 @@ function renderSummary(){
   const since = Date.now() - 7*24*3600*1000;
   const d = load().filter(x => new Date(x.tanggal).getTime() >= since);
   const counts = Object.fromEntries(Object.keys(EMOS).map(k => [k, 0]));
-  d.forEach(x => counts[x.emosi]++);
+  d.forEach(x => { if (counts[x.emosi] !== undefined) counts[x.emosi]++; });
   $('totalInfo').textContent = d.length + ' check-in tercatat';
-  $('noData').classList.toggle('hidden', d.length > 0);
-  $('doughnut').parentElement.classList.toggle('hidden', d.length === 0);
+  $('noData').classList.toggle('hidden', d.length > 0);$('doughnut').parentElement.classList.toggle('hidden', d.length === 0);
   if (chart) chart.destroy();
   if (d.length){
     chart = new Chart($('doughnut'), {
@@ -249,8 +283,7 @@ function renderSummary(){
 /* ---------- riwayat ---------- */
 function renderHistory(){
   const d = load().slice().sort((a,b) => new Date(b.tanggal) - new Date(a.tanggal));
-  $('histEmpty').classList.toggle('hidden', d.length > 0);
-  $('histBody').innerHTML = d.map(x => {
+  $('histEmpty').classList.toggle('hidden', d.length > 0);$('histBody').innerHTML = d.map(x => {
     const c = EMOS[x.emosi] || {bg:'#eee', fg:'#333'};
     return `<tr class="border-b border-stone-100 align-top">
       <td class="py-3 pr-3 whitespace-nowrap">${fmt(x.tanggal)}</td>
@@ -262,22 +295,34 @@ function renderHistory(){
 
 /* ---------- pengaturan ---------- */
 $('resetBtn').addEventListener('click', () => {
-  if (confirm('Hapus semua data check-in? Tindakan ini tidak bisa dibatalkan.')){
-    save([]); toast('Semua data check-in dihapus');
+  if (confirm('Hapus semua data check-in dari database? Tindakan ini tidak bisa dibatalkan.')){
+    db.ref('checkins').remove()
+      .then(() => toast('Semua data check-in dihapus dari server'))
+      .catch(e => toast('Gagal menghapus: ' + e.message));
   }
 });
 $('seedBtn').addEventListener('click', () => {
   const names = ['Ibu S.','Mbah T.','Pak A.','Ibu M.'], emos = Object.keys(EMOS);
   const notes = ['', '', 'Bercerita tentang cucunya', 'Makan lahap', 'Menanyakan kapan anaknya datang', 'Duduk sendiri di teras'];
-  const d = load();
+  const updates = {};
   for (let i = 0; i < 18; i++){
     const nama = names[i % 4];
     let emosi = emos[Math.floor(Math.random()*emos.length)];
     if (nama === 'Mbah T.' && i % 2 === 0) emosi = 'Rindu keluarga';
     if (nama === 'Ibu S.' && i % 3 === 0) emosi = 'Kesepian';
-    d.push({ id: Date.now()+i, tanggal: new Date(Date.now() - Math.random()*6.5*24*3600*1000).toISOString(), nama, emosi, catatan: notes[Math.floor(Math.random()*notes.length)] });
+    const newKey = db.ref('checkins').push().key;
+    const item = {
+      id: Date.now() + i,
+      tanggal: new Date(Date.now() - Math.random()*6.5*24*3600*1000).toISOString(),
+      nama,
+      emosi,
+      catatan: notes[Math.floor(Math.random()*notes.length)]
+    };
+    updates['/checkins/' + newKey] = item;
   }
-  save(d); toast('18 data contoh ditambahkan');
+  db.ref().update(updates)
+    .then(() => toast('18 data contoh ditambahkan ke server'))
+    .catch(e => toast('Gagal menambah data contoh: ' + e.message));
 });
 
 showView();
