@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Web Check-in Emosional Lansia — Pondok Lansia Al-Ishlah</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  body{font-family:'Nunito',system-ui,-apple-system,'Segoe UI',sans-serif;background:#f6f7f2;color:#1f2d24;font-size:17px}
+  .emo{border:3px solid transparent;transition:transform .12s,border-color .12s,box-shadow .12s}
+  .emo:hover{transform:translateY(-2px)}
+  .emo[aria-pressed="true"]{border-color:#14532d;box-shadow:0 0 0 3px #14532d33}
+  .tab[aria-selected="true"]{background:#14532d;color:#fff}
+  :focus-visible{outline:3px solid #f59e0b;outline-offset:2px}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- LOGIN -->
+<section id="loginView" class="hidden min-h-screen items-center justify-center p-4">
+  <form id="loginForm" class="w-full max-w-md bg-white rounded-2xl shadow-lg overflow-hidden" autocomplete="off">
+    <div class="bg-green-900 text-white px-6 py-6">
+      <h1 class="text-2xl font-extrabold leading-snug">Pondok Lansia Al-Ishlah</h1>
+      <p class="text-green-100 mt-1">Check-in emosional lansia · khusus pengurus</p>
+    </div>
+    <div class="p-6 space-y-4">
+      <div>
+        <label for="user" class="block font-bold mb-1">Username</label>
+        <input id="user" type="text" required class="w-full border-2 border-stone-300 rounded-xl px-4 py-3 focus:border-green-800" autocapitalize="none">
+      </div>
+      <div>
+        <label for="pass" class="block font-bold mb-1">Password</label>
+        <input id="pass" type="password" required class="w-full border-2 border-stone-300 rounded-xl px-4 py-3 focus:border-green-800">
+      </div>
+      <p id="loginErr" class="hidden text-red-700 font-semibold">Username atau password salah. Periksa lalu coba lagi.</p>
+      <button class="w-full bg-green-900 hover:bg-green-800 text-white font-extrabold text-lg rounded-xl py-3">Masuk</button>
+      <p class="text-sm text-stone-500 text-center">Setelah masuk, perangkat ini akan tetap login sampai Anda menekan Keluar.</p>
+    </div>
+  </form>
+</section>
+
+<!-- APP -->
+<div id="appView" class="hidden">
+  <header class="bg-green-900 text-white">
+    <div class="max-w-5xl mx-auto px-4 py-4 flex flex-wrap items-center justify-between gap-3">
+      <h1 class="text-lg sm:text-2xl font-extrabold leading-snug max-w-xl">Web Check-in Emosional Lansia — Pondok Lansia Al-Ishlah</h1>
+      <div class="flex items-center gap-3">
+        <span class="flex items-center gap-2 bg-green-800 rounded-full px-3 py-1 font-semibold text-sm">
+          <span class="w-2.5 h-2.5 rounded-full bg-lime-300"></span>Pengurus Active
+        </span>
+        <button id="logoutBtn" class="bg-white text-green-900 font-bold rounded-full px-4 py-1.5 hover:bg-green-50">Keluar</button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="max-w-5xl mx-auto px-4 mt-4" role="tablist">
+    <div class="flex gap-2 overflow-x-auto pb-1">
+      <button class="tab shrink-0 rounded-xl px-5 py-2.5 font-bold bg-white border border-stone-200" role="tab" data-tab="checkin">Check-in</button>
+      <button class="tab shrink-0 rounded-xl px-5 py-2.5 font-bold bg-white border border-stone-200" role="tab" data-tab="ringkasan">Ringkasan Mingguan</button>
+      <button class="tab shrink-0 rounded-xl px-5 py-2.5 font-bold bg-white border border-stone-200" role="tab" data-tab="riwayat">Riwayat</button>
+      <button class="tab shrink-0 rounded-xl px-5 py-2.5 font-bold bg-white border border-stone-200" role="tab" data-tab="pengaturan">Pengaturan</button>
+    </div>
+  </nav>
+
+  <main class="max-w-5xl mx-auto px-4 py-5">
+
+    <!-- CHECK-IN -->
+    <section id="tab-checkin" class="panel bg-white rounded-2xl shadow-sm p-5 sm:p-7">
+      <h2 class="text-xl font-extrabold mb-4">Bagaimana perasaan lansia hari ini?</h2>
+      <label for="nama" class="block font-bold mb-1">Nama / inisial lansia</label>
+      <select id="nama" class="w-full sm:w-72 border-2 border-stone-300 rounded-xl px-4 py-3 bg-white focus:border-green-800">
+        <option value="">— Pilih lansia —</option>
+        <option>Ibu S.</option><option>Mbah T.</option><option>Pak A.</option><option>Ibu M.</option>
+      </select>
+
+      <p class="font-bold mt-6 mb-2">Pilih perasaan</p>
+      <div id="emoGrid" class="grid grid-cols-2 md:grid-cols-3 gap-3"></div>
+
+      <label for="catatan" class="block font-bold mt-6 mb-1">Catatan (opsional)</label>
+      <textarea id="catatan" rows="3" placeholder="Contoh: bercerita tentang cucunya, makan sedikit…" class="w-full border-2 border-stone-300 rounded-xl px-4 py-3 focus:border-green-800"></textarea>
+
+      <p id="formErr" class="hidden text-red-700 font-semibold mt-3"></p>
+      <button id="saveBtn" class="mt-5 w-full sm:w-auto bg-green-900 hover:bg-green-800 text-white font-extrabold text-lg rounded-xl px-12 py-3">SIMPAN</button>
+    </section>
+
+    <!-- RINGKASAN -->
+    <section id="tab-ringkasan" class="panel hidden space-y-5">
+      <div class="grid md:grid-cols-2 gap-5">
+        <div class="bg-white rounded-2xl shadow-sm p-5">
+          <h2 class="text-xl font-extrabold">Rekap emosi 7 hari terakhir</h2>
+          <p id="totalInfo" class="text-stone-500 mb-3"></p>
+          <div class="relative h-72"><canvas id="doughnut"></canvas></div>
+          <p id="noData" class="hidden text-center text-stone-500 py-16">Belum ada check-in dalam 7 hari terakhir.</p>
+        </div>
+        <div class="bg-white rounded-2xl shadow-sm p-5">
+          <h2 class="text-xl font-extrabold">Perlu perhatian khusus</h2>
+          <p class="text-stone-500 mb-3">Lansia yang tercatat “Kesepian” atau “Rindu keluarga” minimal 2 kali dalam 7 hari.</p>
+          <ul id="attnList" class="space-y-3"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIWAYAT -->
+    <section id="tab-riwayat" class="panel hidden bg-white rounded-2xl shadow-sm p-5">
+      <h2 class="text-xl font-extrabold mb-3">Riwayat check-in</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left min-w-[560px]">
+          <thead><tr class="border-b-2 border-stone-200 text-stone-600">
+            <th class="py-2 pr-3">Tanggal</th><th class="py-2 pr-3">Nama Lansia</th><th class="py-2 pr-3">Emosi</th><th class="py-2">Catatan</th>
+          </tr></thead>
+          <tbody id="histBody"></tbody>
+        </table>
+      </div>
+      <p id="histEmpty" class="hidden text-center text-stone-500 py-10">Belum ada riwayat. Mulai dari tab Check-in.</p>
+    </section>
+
+    <!-- PENGATURAN -->
+    <section id="tab-pengaturan" class="panel hidden bg-white rounded-2xl shadow-sm p-5 sm:p-7 space-y-6">
+      <div>
+        <h2 class="text-xl font-extrabold">Pengaturan</h2>
+        <p class="text-stone-500">Data tersimpan di browser perangkat ini (localStorage), tidak dikirim ke server.</p>
+      </div>
+      <div class="flex flex-wrap gap-3">
+        <button id="seedBtn" class="bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold rounded-xl px-5 py-3">Isi data contoh</button>
+        <button id="resetBtn" class="bg-red-700 hover:bg-red-800 text-white font-bold rounded-xl px-5 py-3">Reset Data Simulasi</button>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-green-900 text-white font-bold rounded-full px-6 py-3 shadow-lg hidden z-50" role="status"></div>
+
+<script>
+const CRED = { u: 'pengurus', p: 'alishlah2026' };
+const K_SESSION = 'alishlah_session', K_DATA = 'alishlah_checkins';
+const EMOS = {
+  'Senang':          { bg:'#d9f2dc', fg:'#1e5a2a', chart:'#86d19a', icon:'😊' },
+  'Tenang':          { bg:'#d8e8f8', fg:'#1f4a78', chart:'#8bb8e8', icon:'😌' },
+  'Sedih':           { bg:'#f9d9d9', fg:'#8a2a2a', chart:'#ee9a9a', icon:'😢' },
+  'Kesepian':        { bg:'#e6dcf5', fg:'#53318a', chart:'#b79ee0', icon:'🥺' },
+  'Ingin ditemani':  { bg:'#fbf0c0', fg:'#7a5a05', chart:'#f0d36a', icon:'🤝' },
+  'Rindu keluarga':  { bg:'#fbdfc4', fg:'#7a4217', chart:'#eaaa74', icon:'🏡' }
+};
+const ATTN = ['Kesepian','Rindu keluarga'];
+const $ = id => document.getElementById(id);
+let selected = null, chart = null;
+
+/* ---------- storage ---------- */
+const load = () => { try { return JSON.parse(localStorage.getItem(K_DATA)) || []; } catch { return []; } };
+const save = d => { try { localStorage.setItem(K_DATA, JSON.stringify(d)); } catch {} };
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = iso => new Date(iso).toLocaleString('id-ID', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+
+function toast(msg){
+  const t = $('toast'); t.textContent = msg; t.classList.remove('hidden');
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.add('hidden'), 2400);
+}
+
+/* ---------- session ---------- */
+function isLoggedIn(){ try { return localStorage.getItem(K_SESSION) === 'active'; } catch { return false; } }
+function showView(){
+  const ok = isLoggedIn();
+  $('loginView').classList.toggle('hidden', ok);
+  $('loginView').classList.toggle('flex', !ok);
+  $('appView').classList.toggle('hidden', !ok);
+  if (ok) switchTab('checkin');
+}
+$('loginForm').addEventListener('submit', e => {
+  e.preventDefault();
+  if ($('user').value.trim() === CRED.u && $('pass').value === CRED.p){
+    try { localStorage.setItem(K_SESSION, 'active'); } catch {}
+    $('loginErr').classList.add('hidden'); $('pass').value = ''; showView();
+  } else $('loginErr').classList.remove('hidden');
+});
+$('logoutBtn').addEventListener('click', () => {
+  try { localStorage.removeItem(K_SESSION); } catch {}
+  showView();
+});
+
+/* ---------- tabs ---------- */
+function switchTab(name){
+  document.querySelectorAll('.panel').forEach(p => p.classList.toggle('hidden', p.id !== 'tab-' + name));
+  document.querySelectorAll('.tab').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === name));
+  if (name === 'ringkasan') renderSummary();
+  if (name === 'riwayat') renderHistory();
+}
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+
+/* ---------- check-in ---------- */
+$('emoGrid').innerHTML = Object.entries(EMOS).map(([n, c]) => `
+  <button type="button" class="emo rounded-2xl p-4 text-center font-extrabold text-lg" aria-pressed="false" data-emo="${n}" style="background:${c.bg};color:${c.fg}">
+    <span class="block text-4xl mb-1" aria-hidden="true">${c.icon}</span>${n}
+  </button>`).join('');
+$('emoGrid').addEventListener('click', e => {
+  const b = e.target.closest('.emo'); if (!b) return;
+  selected = b.dataset.emo;
+  document.querySelectorAll('.emo').forEach(x => x.setAttribute('aria-pressed', x === b));
+});
+$('saveBtn').addEventListener('click', () => {
+  const err = $('formErr'), nama = $('nama').value;
+  if (!nama || !selected){
+    err.textContent = !nama ? 'Pilih nama lansia terlebih dahulu.' : 'Pilih salah satu perasaan terlebih dahulu.';
+    err.classList.remove('hidden'); return;
+  }
+  err.classList.add('hidden');
+  const d = load();
+  d.push({ id: Date.now(), tanggal: new Date().toISOString(), nama, emosi: selected, catatan: $('catatan').value.trim() });
+  save(d);
+  toast('Check-in ' + nama + ' tersimpan');
+  selected = null; $('catatan').value = ''; $('nama').value = '';
+  document.querySelectorAll('.emo').forEach(x => x.setAttribute('aria-pressed', 'false'));
+});
+
+/* ---------- ringkasan ---------- */
+function renderSummary(){
+  const since = Date.now() - 7*24*3600*1000;
+  const d = load().filter(x => new Date(x.tanggal).getTime() >= since);
+  const counts = Object.fromEntries(Object.keys(EMOS).map(k => [k, 0]));
+  d.forEach(x => counts[x.emosi]++);
+  $('totalInfo').textContent = d.length + ' check-in tercatat';
+  $('noData').classList.toggle('hidden', d.length > 0);
+  $('doughnut').parentElement.classList.toggle('hidden', d.length === 0);
+  if (chart) chart.destroy();
+  if (d.length){
+    chart = new Chart($('doughnut'), {
+      type: 'doughnut',
+      data: { labels: Object.keys(counts), datasets: [{ data: Object.values(counts), backgroundColor: Object.keys(counts).map(k => EMOS[k].chart), borderColor:'#fff', borderWidth: 3 }] },
+      options: { responsive:true, maintainAspectRatio:false, cutout:'58%',
+        plugins:{ legend:{ position:'bottom', labels:{ font:{ size:14, family:'Nunito' }, padding:14 } } } }
+    });
+  }
+  const per = {};
+  d.filter(x => ATTN.includes(x.emosi)).forEach(x => {
+    per[x.nama] = per[x.nama] || { total:0, 'Kesepian':0, 'Rindu keluarga':0 };
+    per[x.nama].total++; per[x.nama][x.emosi]++;
+  });
+  const list = Object.entries(per).filter(([,v]) => v.total >= 2).sort((a,b) => b[1].total - a[1].total);
+  $('attnList').innerHTML = list.length ? list.map(([n, v]) => `
+    <li class="rounded-xl p-4 bg-amber-50 border border-amber-200">
+      <p class="font-extrabold text-lg">${esc(n)}</p>
+      <p class="text-stone-700">${v['Kesepian']} kali Kesepian · ${v['Rindu keluarga']} kali Rindu keluarga</p>
+      <p class="text-sm text-amber-900 font-semibold mt-1">Disarankan didampingi dan diajak berbincang.</p>
+    </li>`).join('') : '<li class="text-stone-500 py-6 text-center">Tidak ada lansia yang perlu perhatian khusus minggu ini.</li>';
+}
+
+/* ---------- riwayat ---------- */
+function renderHistory(){
+  const d = load().slice().sort((a,b) => new Date(b.tanggal) - new Date(a.tanggal));
+  $('histEmpty').classList.toggle('hidden', d.length > 0);
+  $('histBody').innerHTML = d.map(x => {
+    const c = EMOS[x.emosi] || {bg:'#eee', fg:'#333'};
+    return `<tr class="border-b border-stone-100 align-top">
+      <td class="py-3 pr-3 whitespace-nowrap">${fmt(x.tanggal)}</td>
+      <td class="py-3 pr-3 font-bold">${esc(x.nama)}</td>
+      <td class="py-3 pr-3"><span class="inline-block rounded-full px-3 py-0.5 font-bold text-sm whitespace-nowrap" style="background:${c.bg};color:${c.fg}">${esc(x.emosi)}</span></td>
+      <td class="py-3 text-stone-700">${x.catatan ? esc(x.catatan) : '<span class="text-stone-400">—</span>'}</td></tr>`;
+  }).join('');
+}
+
+/* ---------- pengaturan ---------- */
+$('resetBtn').addEventListener('click', () => {
+  if (confirm('Hapus semua data check-in? Tindakan ini tidak bisa dibatalkan.')){
+    save([]); toast('Semua data check-in dihapus');
+  }
+});
+$('seedBtn').addEventListener('click', () => {
+  const names = ['Ibu S.','Mbah T.','Pak A.','Ibu M.'], emos = Object.keys(EMOS);
+  const notes = ['', '', 'Bercerita tentang cucunya', 'Makan lahap', 'Menanyakan kapan anaknya datang', 'Duduk sendiri di teras'];
+  const d = load();
+  for (let i = 0; i < 18; i++){
+    const nama = names[i % 4];
+    let emosi = emos[Math.floor(Math.random()*emos.length)];
+    if (nama === 'Mbah T.' && i % 2 === 0) emosi = 'Rindu keluarga';
+    if (nama === 'Ibu S.' && i % 3 === 0) emosi = 'Kesepian';
+    d.push({ id: Date.now()+i, tanggal: new Date(Date.now() - Math.random()*6.5*24*3600*1000).toISOString(), nama, emosi, catatan: notes[Math.floor(Math.random()*notes.length)] });
+  }
+  save(d); toast('18 data contoh ditambahkan');
+});
+
+showView();
+</script>
+</body>
+</html>
